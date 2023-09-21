@@ -62,7 +62,7 @@ public:
         m_pool.push_back(std::move(thr));
     }
     ~ThreadPool() { // main函数结束前自动调用
-        for(auto &t : m_pool) // 让线程池中的每一个线程都执行完再return
+        for (auto &t : m_pool) // 让线程池中的每一个线程都执行完再return
             t.join();
     }
 private:
@@ -144,14 +144,14 @@ int ret = fret.get();
 std::vector<int> arr; // vector不是多线程安全容器
 std::mutex mtx; // 互斥锁
 std::thread t1([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         mtx.lock();
         arr.push_back(1);
         mtx.unlock();
     }
 });
 std::thread t2([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         mtx.lock();
         arr.push_back(2);
         mtx.unlock();
@@ -167,13 +167,13 @@ std::thread t2([&] {
 `std::lock_guard`为了防止程序员犯错写成死锁，将对`std::mutex`的`lock()`和`unlock()`操作进行封装，它的构造函数包含前者，析构函数包含后者，故退出作用域时能自动解锁
 ```C++
 std::thread t1([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         std::lock_guard grd(mtx);
         arr.push_back(1);
     }
 });
 std::thread t2([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         std::lock_guard grd(mtx);
         arr.push_back(2);
     }
@@ -185,13 +185,13 @@ std::thread t2([&] {
 `std::lock_guard`严格在析构时`unlock()`，但有时需要提前`unlock()`
 ```C++
 std::thread t1([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         std::unique_lock grd(mtx);
         arr.push_back(1);
     }
 });
 std::thread t2([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         std::unique_lock grd(mtx);
         arr.push_back(2);
         grd.unlock();
@@ -215,7 +215,7 @@ std::unique_lock grd(mtx, std::defer_lock);
 # 4. 死锁 #
 ```C++
 std::thread t1([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         mtx1.lock(); // 1
         mtx2.lock(); // 3
         mtx2.unlock();
@@ -223,7 +223,7 @@ std::thread t1([&] {
     }
 });
 std::thread t2([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         mtx2.lock(); // 2
         mtx1.lock(); // 4
         mtx1.unlock();
@@ -239,14 +239,14 @@ std::thread t2([&] {
 * 也可以使用`std::lock()`，它保证了任意数量线程的调用顺序是否相同都不会死锁，如：
 ```C++
 std::thread t1([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         std::lock(mtx1, mtx2);
         mtx1.unlock();
         mtx2.unlock();
     }
 });
 std::thread t2([&] {
-    for(int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++) {
         std::lock(mtx2, mtx1);
         mtx2.unlock();
         mtx1.unlock();
@@ -426,11 +426,11 @@ private:
 std::atomic<int> counter = 0;
 // 无需上锁
 std::thread t1([&] {
-    for(int i = 0; i < 10; i++)
+    for (int i = 0; i < 10; i++)
         counter += 1;
 });
 std::thread t2([&] {
-    for(int i = 0; i < 10; i++)
+    for (int i = 0; i < 10; i++)
         counter += 1;
 });
 ```

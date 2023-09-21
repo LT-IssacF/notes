@@ -51,7 +51,7 @@
 
 const int a = 10;
 int sum = 0;
-for(int i = 1; i < 10; i++) {
+for (int i = 1; i < 10; i++) {
   sum += i * a;
 }
 std::cout << sum << std::endl;

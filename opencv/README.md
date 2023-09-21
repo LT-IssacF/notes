@@ -94,6 +94,7 @@ cv.imshow("image", img)
 cv.waitKey()
 cv.destroyAllWindows()
 ```
+![](./image/OpenCV.png)
 
 #### 1.10 获取并修改图像像素点 ####
 ```py
@@ -183,3 +184,6 @@ cv.imshow("addWeighted", img3)
 cv.waitKey()
 cv.destroyAllWindows()
 ```
+![Balsamroot wildflowers bloom below the Teton Mountains in Grand Teton National Park, Wyoming.jpg](./image/Balsamroot%20wildflowers%20bloom%20below%20the%20Teton%20Mountains%20in%20Grand%20Teton%20National%20Park,%20Wyoming.jpg)
+![Cable car station at the summit of Zugspitze mountain in Grainau, Garmisch-Partenkirchen, Germany.jpg](./image/Cable%20car%20station%20at%20the%20summit%20of%20Zugspitze%20mountain%20in%20Grainau,%20Garmisch-Partenkirchen,%20Germany.jpg)
+![addWeighted.jpg](./image/addWeighted.jpg)

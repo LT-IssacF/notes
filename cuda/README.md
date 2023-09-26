@@ -1,11 +1,12 @@
 ## 课程来源: [CUDA在现代C++中如何运用？](https://www.bilibili.com/video/BV16b4y1E74f/ "双笙子佯谬") ##
+
 ## 前置知识 ##
 * `__global__`核函数，从CPU端通过三重尖括号调用，在GPU端上执行，不可以有返回值
 * `__device__`设备函数，在GPU上调用和执行，不需要尖括号，可以有返回值
 * `host`可以调用`global`，`global`可以调用`device`，`device`可以调用`device`
 * `cudaDeviceSynchronize()`同步函数，令`host`等待`device`执行完
 * `__inline__`同C++的内敛函数声明
-* `__host__ __device__`可以将函数同时定义在CPU和GPU上并调用，如下：
+* `__host__` `__device__`可以将函数同时定义在CPU和GPU上并调用，如下：
 ```C++
 __host__ __device__ void say_hello() {
 #ifdef __CUDA_ARCH__
@@ -63,7 +64,7 @@ int main() {
 
 网格跨步循环
 ```C++
-for(int i = threadIdx.x; i < n; i += blockDim.x) {
+for (int i = threadIdx.x; i < n; i += blockDim.x) {
     ...
 } // 例子：处理长度为8的数组，只分配4个线程，两轮就执行结束
 ```
@@ -72,7 +73,7 @@ for(int i = threadIdx.x; i < n; i += blockDim.x) {
 ## 从线程到板块 ##
 当需要处理的数据`n`远远大于硬件的线程数`blockDim`时，可以用`n / blockDim`作为`gridDim`；但是当`n`不能整除`blockDim`时就会向下取整从而导致有余下的数据无法使用线程，有两种解决办法，一是**向上取整**，即`gridDim = (n + blockDim - 1) / blockDim`，二还是**采用网格跨步循环**，如下：
 ```C++
-for(int i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
+for (int i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += gridDim.x * blockDim.x) {
     ...
 } // 一次跨步为总的线程数量
 ```
@@ -103,6 +104,10 @@ struct cudaAllocator {
             ::new((void*)p) T(std::forward<Args>(args)...);
     }
 }
+```
+使用`constexpr`关键字需在CMakeLists.txt中加上下面这句：
+```cmake
+target_compile_options(TARGET PUBLIC $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
 ```
 
 ---
@@ -164,7 +169,7 @@ parallel_for<<<32, 128>>>(n, [arr = arr.data()] __device__ (int i) { arr[i] = i;
     std::vector<float> x1(n), y1(n);
     std::vector<float, cudaAllocator<float>> x2(n), y2(n);
 
-    for(int i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         x1[i] = std::rand() * (1.f / RAND_MAX);
         y1[i] = std::rand() * (1.f / RAND_MAX);
         x2[i] = std::rand() * (1.f / RAND_MAX);
@@ -172,7 +177,7 @@ parallel_for<<<32, 128>>>(n, [arr = arr.data()] __device__ (int i) { arr[i] = i;
     }
 
     TICK(cpu);
-    for(int i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         x1[i] = a * x1[i] + y1[i];
     }
     TOCK(cpu);
@@ -189,19 +194,19 @@ parallel_for<<<32, 128>>>(n, [arr = arr.data()] __device__ (int i) { arr[i] = i;
 ## thrust 库 ##
 * `universal_vector`统一地址分配，`host_vector`内存分配，`device_vector`显存分配。可以通过`=`运算符在`host_vector`与`device_vector`之间拷贝数据
 * `generate()`用于在容器内批量生成一系列数字，例如：
-    ```C++
-    thrust::generate(vector_host.begin(), vector_host.end(), [] {
-        return std::rand() * (1.f / RAND_MAX)
-    });
-    ```
+```C++
+thrust::generate(vector_host.begin(), vector_host.end(), [] {
+    return std::rand() * (1.f / RAND_MAX)
+});
+```
 * `for_each()`可以批量修改容器内的数据，例如：
-    ```C++
-    thrust::for_each(vector_device.begin(), vector_device.end(),
-        [] __device__ (float &x) { x += 100.f; });
+```C++
+thrust::for_each(vector_device.begin(), vector_device.end(),
+    [] __device__ (float &x) { x += 100.f; });
 
-    thrust::for_each(thrust::make_counting_iterator(0), thrust::make_counting_iterator(10),
-        [] __device__ (int i) { std::cout << i << std::endl; }); // 相当于for区间
-    ```
+thrust::for_each(thrust::make_counting_iterator(0), thrust::make_counting_iterator(10),
+    [] __device__ (int i) { std::cout << i << std::endl; }); // 相当于for区间
+```
 类似的还有很多标准库函数
 
 ---
@@ -209,7 +214,7 @@ parallel_for<<<32, 128>>>(n, [arr = arr.data()] __device__ (int i) { arr[i] = i;
 众所周知，被`__global__`修饰的核函数不能返回值，但可以用指针获取函数内求的结果，比如：
 ```C++
 __global__ void parallel_sum(int *sum, const int *arr, int n) {
-    for(int i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+    for (int i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         sum[0] += arr[i];
     }
 }
@@ -229,13 +234,14 @@ int main() {
 `aomicAdd()`会返回旧值，相应的也会有其他的运算，如加减、异或与和最大最小值
 但是这样也就让并行变为了串行，如果使用老版本cuda，这样做与在cpu中直接计算并无差距
 
-* 解决办法之一：TLS(Thread Local Storage)
+* 解决办法之一：**TLS**(Thread Local Storage) （**同时也是平均效率最好的方法之一**，编译器会自动优化为BLS(Block Local Storage)）
 ```C++
 __global__ void parallel_sum(int *sum, const int *arr, int n) {
     int local_sum = 0;
-    for(int i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
+    for (int i = blockDim.x * blockIdx.x + threadIdx.x; i < n; i += blockDim.x * gridDim.x) {
         local_sum += arr[i];
-    } atomicAdd(&sum[0], local_sum);
+    }
+    atomicAdd(&sum[0], local_sum);
 }
 
 int main() {
@@ -249,9 +255,9 @@ int main() {
 * 还有一种办法无需原子操作：
 ```C++
 __global__ void parallel_sum(int *sum, const int *arr, int n) {
-    for(int i = blockDim.x * blockIdx.x + threadIdx.x; i < n / 1024; i += blockDim.x * gridDim.x) {
+    for (int i = blockDim.x * blockIdx.x + threadIdx.x; i < n / 1024; i += blockDim.x * gridDim.x) {
         int local_sum = 0;
-        for(int j = i * 1024; j < (i + 1) * 1024; j++) {
+        for (int j = i * 1024; j < (i + 1) * 1024; j++) {
             local_sum += arr[j];
         } // 每个线程负责原数组中相邻1024个元素的求和
         sum[i] = local_sum;
@@ -265,10 +271,131 @@ int main() {
     parallel_sum<<<n / 1024 / 128, 128>>>(sum.data(), arr.data(), n); // 启动n / 1024个线程
     ...
     int final_sum = 0;
-    for(int i = 0; i < n / 1024; i++) {
+    for (int i = 0; i < n / 1024; i++) {
         final_sum += sum[i];
     }
     ...
 }
 ```
 核心思想就是使用一个比原数组小x倍的辅助数组，开共n/x个线程，每个线程串行处理x个数据，将结果储存到辅助数组中，最后cpu再串行地处理辅助数组即可（辅助数组的大小在接受范围内）
+
+还有一种更高效的办法，就是采用类似希尔排序的思想并行处理数据，每一块分配线程数大小的辅助数组，第一次循环先将数据读入辅助数组，后面每一次都减半处理，如下图：
+![](./image/1.png)
+```C++
+__global__ void parallel_sum(int *sum, const int *arr, int n) {
+    for (int i = blockDim.x * blockIdx.x + threadIdx.x; i < n / 1024; i += blockDim.x * gridDim.x) {
+        int local_sum[1024];
+        for (int j = 0; j < 1024; j++) {
+            local_sum[j] = arr[i * 1024 + j];
+        }
+        for (int j = 0; j < 512; j++) {
+            local_sum[j] += local_sum[j + 512];
+        } // 从这开始，每次都开始加上后一半的数据
+        ...
+        for (int j = 0; j < 1; j++) {
+            local_sum[j] += local_sum[j + 1];
+        }
+        sum[i] = local_sum[0];
+    }
+}
+```
+
+---
+## 板块共享内存 ##
+grid内的所有线程都是并行的（板块之间也是并行的），但每个板块都有一块自己的内存供板块内所有线程共享，可以使用`__shared__`进行声明定义
+使用板块内存可以更好地提高并行度，但是要注意数据依赖，可以用`__syncthreads()`解决这个问题，它的功能是强制同步当前板块内的所有线程，即让所有线程运行到此行代码位置才可以继续进行
+```C++
+__global__ void parallel_sum(int *sum, const int *arr, int n) {
+    __shared__ volatile int local_sum[1024]; // 板块共享内存，volatile关键字禁止编译器优化
+    int i = blockIdx.x, j = threadIdx.x;
+
+    local_sum[j] = arr[i * 1024 + j];
+    __syncthreads();
+    if (j < 512) {
+        local_sum[j] += local_sum[j + 512];
+    }
+    __syncthreads();
+    if (j < 256) {
+        local_sum[j] += local_sum[j + 256];
+    }
+    ...
+    if (j < 1) {
+        sum[j] = local_sum[0] + local_sum[1];
+    }
+}
+```
+假设有一种情况，`threadIdx.x = 257`的线程，执行第一个`if`块内的`local_sum[257] += local_sum[769]`，那假如同时也有`threadIdx.x = 1`的线程，当它执行第二个`if`块内的`local[1] += local_sum[257];`时，由于线程之间的并发性和异步性，此时就会出现数据依赖错误，故**必须在每个if块前加上同步操作**，但是，又由于线程组（warp）32个线程为一组，SM对线程的调度是以组为单位的，所以最后`j < 32`以后就不需要同步了。但这又会引申出另一个问题——**线程组分支**
+```C++
+if (cond()) {
+    A();
+} else {
+    B();
+}
+```
+线程组中的32个线程不一定全都能进入相同的分支，如果这种情况发生，会导致两个分支都被执行，尽管在`cond()`为假的即本不该进入的分支会避免修改寄存器，但还是会产生额外的开销，因此建议在编程时，要尽可能使32个线程全处于一个分支中，否则消耗两倍时间。出于这种考虑，可以将上面`j < 32`以后的全合在一个`if`块里：
+```C++
+__syncthreads();
+if (j < 32) {
+    local_sum[j] += local_sum[j + 32];
+    local_sum[j] += local_sum[j + 16];
+    local_sum[j] += local_sum[j + 8];
+    local_sum[j] += local_sum[j + 4];
+    local_sum[j] += local_sum[j + 2];
+    if (j < 1) {
+        sum = local_sum[0] + local_sum[1];
+    }
+}
+```
+
+---
+## 循环分块 ##
+矩阵转置例子：
+```C++
+template <typename T>
+__global__ void parallel_transpose(T *out, const T *in, int _x, int _y) {
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    int x = idx % _x, y = idx / _x; // x:列序 y:行序
+    if (x >= _x || y >= _y) return;
+    out[x * _x + y] = in[idx]; // 转置
+}
+
+template <typename T>
+void parallel_transpose_print(const T *arr, int x, int y) {
+    for (int i = 0; i < y; i++) {
+        for (int j = 0; j < x; j++) {
+            std::cout << arr[i * y + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+int main() {
+    int x = 1 << 14, y = 1 << 14;
+    std::vector<int, cudaAllocator<int>> in(x * y), out(x * y);
+    ... // 预处理矩阵
+    parallel_transpose_print(in.data(), x, y);
+
+    parallel_transpose<<<x * y / 1024, 1024>>>(out.data(), in.data(), x, y); // 矩阵每个元素分配一个线程
+    checkCudaErrors(cudaDeviceSynchronize());
+    parallel_transpose_print(out.data(), y, x);
+    ...
+}
+```
+在转置过程中，对in的访问是传统的符合局部性原理的行主序访问，但对转置矩阵out的处理就是**列主序**了
+使用二维的`gridDim`和`blockDim`可以实现GPU的循环分块，有利于提高缓存局部性：
+```C++
+template <typename T>
+__global__ void parallel_transpose(T *out, const T *in, int _x, int _y) {
+    int x = blockDim.x * blockIdx.x + threadIdx.x;
+    int y = blockDim.y * blockIdx.y + threadIdx.y;
+    if (x >= _x || y >= _y) return;
+    out[x * _x + y] = in[y * _x + x];
+}
+
+int main() {
+    ...
+    parallel_transpose<<<dim3<x / 32, y / 32, 1>, dim3<32, 32, 1>>>>(out.data(), in.data(), x, y);
+    ...
+}
+```

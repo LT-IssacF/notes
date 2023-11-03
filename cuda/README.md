@@ -455,7 +455,7 @@ for (int i = 0; i < cnt; i++) {
     int y = blockDim.y * blockIdx.y + threadIdx.y;
     int tid = y * blockDim.x * gridDim.x + x;
 ```
-* `___shared__`分配的共享储存在每个板块上是独立的，仅供内部线程访问
+* `__shared__`分配的共享储存在每个板块上是独立的，仅供内部线程访问
 * `__syncthreads()`会同步板块内所有线程，在控制块内需要慎用（会造成死锁）
 
 ## Chapter 6: Constant Memory and Events

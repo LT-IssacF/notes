@@ -785,7 +785,7 @@ __global__ void MatrixMulCUDA(float *C, float *A, float *B, int wA, int wB) {
 
     #pragma unroll
     for (int k = 0; k < BLOCK_SIZE; ++k) {
-      Csub += As[k][tx] * Bs[ty][k];
+      Csub += As[ty][k] * Bs[k][tx];
     } // tell the compiler to unroll the iteration
     __syncthreads();
   }
@@ -797,7 +797,10 @@ __global__ void MatrixMulCUDA(float *C, float *A, float *B, int wA, int wB) {
 我觉得目前对我来说比较新颖的点是，在 for 循环中声明共享内存，也就是每次迭代都会使用新的共享数组
 结合图片来理解这个 kernel，首先 `aBegin`(A 矩阵每一行块的开端) & `bBegin`(B 矩阵每一列块的开端) 是由 `blockIdx` 来决定的，这说明是 kernel 中的每一 block 来处理两个矩阵的每一行和列；然后再看这个循环，迭代每次的增量 `step` 是行或列里的块距（这里其实就已经说明了cuda硬件上的 block 和本矩阵的块不是一个东西），一个 block 一次迭代处理行（列）块中的一个块（方格），然后通过 wA(hB) / BLOCK_SIZE 次迭代就处理完了一行（列）块
 核心思想：通过迭代和在迭代内声明共享内存的方法让硬件上的 block 能够处理矩阵上的行（列）块
-最后再看写入 `Csub` 和 `C[]`，首先 `Csub` 是每个线程的本地变量，它保存着每一行（列）块中 `BLOCK_SIZE` 个元素对应相乘的结果，而 `C[]` 的保存位置是 `c`(块偏移) 和 block 内偏移决定的，不再多讲。需要注意的是，在计算 `bStep` 和 最后的块内偏移是，乘的是 `wB` 而不是 `BLOCK_SIZE`
+第一个 `__syncthreads()` 后，共享矩阵中 `BLOCK_SIZE * BLOCK_SIZE` 个线程已经准备好了 `BLOCK_SIZE * BLOCK_SIZE` 的矩阵数据，对应于行（列）块中的一块
+![matrixMul2](../image/matrixMul2.png)
+最后再看计算 `Csub` 和写入 `C[]`，首先 `Csub` 是每个线程的本地变量，这里通过 `BLOCK_SIZE` 次内迭代实现矩阵乘法中的一行乘一列，得到一个暂时的 `Csub`，图中的只是 `tx = 0, ty = 0` 的 `Csub`；然后二维板块每个线程这样乘就得到了一个暂时的 `C[]` 数据，这样第二个 `__syncthreads()` 的作用就不言而喻了；最后外层还有一个迭代次数 `BLOCK_SIZE` 的大循环，每个 `Csub` 迭代累加就得到了最后的一个 `C[]` 数据
+而 `C[]` 的保存位置是 `c`(块偏移) 和 block 内偏移（一个 block 内有 `BLOCK_SIZE * BLOCK_SIZE` 个 `Csub`）决定的，不再多讲。需要注意的是，在计算 `bStep` 和 最后的块内偏移是，乘的是 `wB` 而不是 `BLOCK_SIZE`
 
 ### matrixMulDrv
 这个 [example](https://github.com/NVIDIA/cuda-samples/blob/master/Samples/0_Introduction/matrixMulDrv/matrixMulDrv.cpp) 呢就是又提供了一种其它工程使用CUDA的方式，就是先将 .cu 用编译器编译成 .fatbin 文件，之后在主工程内依靠 `#include <builtin_types.h`, `#include <helper_cuda_drvapi.h>` & `#include <cuda.h>` 使用，具体命令：

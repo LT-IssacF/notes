@@ -280,7 +280,7 @@ int main() {
 核心思想就是使用一个比原数组小x倍的辅助数组，开共n/x个线程，每个线程串行处理x个数据，将结果储存到辅助数组中，最后cpu再串行地处理辅助数组即可（辅助数组的大小在接受范围内）
 
 还有一种更高效的办法，就是采用类似希尔排序的思想并行处理数据，每一块分配线程数大小的辅助数组，第一次循环先将数据读入辅助数组，后面每一次都减半处理，如下图：
-![](./image/1.png)
+![](../image/1.png)
 ```C++
 __global__ void parallel_sum(int *sum, const int *arr, int n) {
     for (int i = blockDim.x * blockIdx.x + threadIdx.x; i < n / 1024; i += blockDim.x * gridDim.x) {
@@ -449,7 +449,7 @@ for (int i = 0; i < cnt; i++) {
 ## Chapter 5: Parallel Programming in CUDA C
 * 启动板块时需要注意向上取整，例如 N = 127 时，则 `kernel<<<N / 128, 128>>>();` 就会得出启动 0 个板块而错误，正确的做法应当是 `kernel<<<(N + 128 - 1) / 128, 128>>>()`
 * 4060 的 `maxThreadsPerBlock` 为 1024，但最好不要用那么满，具体可以看[前面](#从线程到板块)
-![二维板块和线程](./image/Chapter_05_2d_blocks_and_threads.png)
+![二维板块和线程](../image/Chapter_05_2d_blocks_and_threads.png)
 ```C++
     int x = blockDim.x * blockIdx.x + threadIdx.x;
     int y = blockDim.y * blockIdx.y + threadIdx.y;
@@ -535,7 +535,7 @@ void __global__ reduceNeighbor(const T *input, T *output) {
     ...
 }
 ```
-![](./image/reduceNeighbored.png)
+![](../image/reduceNeighbored.png)
 虽然无论在 naive 还是改进版中一开始都需要 8 个线程，但是改进后第一次只需要 4 个线程运行，余下的线程统一闲置，而不像 naive 中前一个线程在运行，后一个线程闲置
 
 * 交错配对 reduce 模板(naive)
@@ -643,7 +643,7 @@ int main(int argc, char **argv) {
 ### concurrentKernels
 **cuda stream**: cuda不仅可以通过硬件上的多线程完成内核级的并行，还可以通过流与事件实现网格级的并行。简单地说就是在主机端异步地执行启动kernel，kernel将自动运行在设备的multiprocessor上，流之间是异步的，流内按顺序执行，例如当kernel1在设备上完成计算时，kernel2正在从主机端向设备端传输数据
 
-![https://face2ai.com/CUDA-F-6-1-%E6%B5%81%E5%92%8C%E4%BA%8B%E4%BB%B6%E6%A6%82%E8%BF%B0/](./image/stream.png)
+![](../image/stream.png)
 
 * 核函数调用的完整启动配置
 ```C++
@@ -793,7 +793,7 @@ __global__ void MatrixMulCUDA(float *C, float *A, float *B, int wA, int wB) {
   C[c + wB * ty + tx] = Csub;
 }
 ```
-![matrixMul](./image/matrixMul.png)
+![matrixMul](../image/matrixMul.png)
 我觉得目前对我来说比较新颖的点是，在 for 循环中声明共享内存，也就是每次迭代都会使用新的共享数组
 结合图片来理解这个 kernel，首先 `aBegin`(A 矩阵每一行块的开端) & `bBegin`(B 矩阵每一列块的开端) 是由 `blockIdx` 来决定的，这说明是 kernel 中的每一 block 来处理两个矩阵的每一行和列；然后再看这个循环，迭代每次的增量 `step` 是行或列里的块距（这里其实就已经说明了cuda硬件上的 block 和本矩阵的块不是一个东西），一个 block 一次迭代处理行（列）块中的一个块（方格），然后通过 wA(hB) / BLOCK_SIZE 次迭代就处理完了一行（列）块
 核心思想：通过迭代和在迭代内声明共享内存的方法让硬件上的 block 能够处理矩阵上的行（列）块

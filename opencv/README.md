@@ -1,7 +1,7 @@
-## 来源：[黑马程序员OpenCV开源教程](https://www.bilibili.com/video/BV1Fo4y1d7JL/) ##
-# 1. 基本操作 #
-## 图像操作 ##
-#### 1.1 图像读取 ####
+# 来源：[黑马程序员OpenCV开源教程](https://www.bilibili.com/video/BV1Fo4y1d7JL/)
+# 1. 基本操作
+## 图像操作
+#### 1.1 图像读取
     cv2.imread(filename: str, flag: int = ...) -> MatLike
 参数：
 * 图像文件的路径
@@ -10,19 +10,19 @@
     * 0(`cv2.IMREAD*GRAYSCALE`) 灰度模式
     * -1(`cv2.IMREAD_UNCHANGED`) RGBA模式
 
-#### 1.2 图像显示 ####
+#### 1.2 图像显示
     cv2.imshow(winname: str, mat: MatLike) -> void
 参数：
 * 窗口名称
 * 已读取的图像对象
 
-#### 1.3 保存图像 ####
+#### 1.3 保存图像
     cv2.imwrite(filename: str, img: MatLike, params: Sequence[int] = ...) -> bool
 参数：
 * 文件路径
 * 需要保存的文件对象
 
-#### 1.4 与键盘交互 ####
+#### 1.4 与键盘交互
     cv2.waitKey(delay: int = ...) -> int
 参数：
 * 默认为0，意为按下任意键后停止等待；当为大于0的整数数，意为等待相应的毫秒数；返回按键的ASCII码值
@@ -30,7 +30,7 @@
 Tips:
 * 一般情况下，无参数或参数为0为显示图像的理想选择，而参数为1则用于显示视频
 
-#### 1.5 关闭窗口 ####
+#### 1.5 关闭窗口
     cv2.destroyWindow(winname: str) -> void
 参数：
 * 窗口名
@@ -39,20 +39,20 @@ Tips:
 无参数
 
 ---
-#### example ####
+#### example
 ```py
 import cv2 as cv
 img = cv.imread("./image.png")
 cv.imshow("window", img)
 while(1):
     key = cv2.waitKey()
-    if key == 0x1B: # ESC
+    if key == 0x1B: ESC
         break
 cv2.destroyAllWindows()
 ```
 
-## 绘制图形 ##
-#### 1.6 直线 ####
+## 绘制图形
+#### 1.6 直线
     cv2.line(img: MatLike, pt1: Point, pt2: Point, color: Scalar, thickness: int = ...) -> MatLike
 参数：
 * 图像对象
@@ -60,31 +60,31 @@ cv2.destroyAllWindows()
 * 线条颜色
 * 线条宽度
 
-#### 1.7 圆环 ####
+#### 1.7 圆环
     cv2.circle(img: MatLike, center: Point, radius: int, color: Scalar, thickness: int = ...) -> MatLike
 参数：
 * **当线条宽度为-1时，圆为实心圆**
 
-#### 1.8 矩形 ####
+#### 1.8 矩形
     cv2.rectangle(img: MatLike, pt1: Point, pt2: Point, color: Scalar, thickness: int = ...) -> MatLike
 参数：
 * 矩形左上角和右下角
 
-#### 1.9 添加文本 ####
+#### 1.9 添加文本
     cv2.putText(img: MatLike, text: str, org: Point, fontFace: int, fontScale: float, color: Scalar, thickness: int = ...) -> MatLike
 参数：
 * 文本放置位置
 * 字体和字体大小
 
 ---
-#### example ####
+#### example
 ```py
 import cv2 as cv
 import numpy as np
 
 img = np.zeros((600, 800, 3), np.uint8)
 
-cv.line(img, (0, 0), (799, 599), (0, 0, 0xFF), 5) # opencv中颜色格式为BGR
+cv.line(img, (0, 0), (799, 599), (0, 0, 0xFF), 5) opencv中颜色格式为BGR
 cv.rectangle(img, (543, 0), (799, 255), (0, 0xFF, 0), 5)
 cv.circle(img, (671, 127), 123, (0xFF, 0, 0), -1)
 cv.putText(img, "OpenCV", (110, 540), cv.FONT_HERSHEY_SIMPLEX, 5, (0x7F, 0x7F, 0x7F), 4, cv.LINE_AA)
@@ -96,21 +96,21 @@ cv.destroyAllWindows()
 ```
 ![](./image/OpenCV.png)
 
-#### 1.10 获取并修改图像像素点 ####
+#### 1.10 获取并修改图像像素点
 ```py
 img = cv2.imread("./image.png")
-pixel_value = img[100, 100] # 获取图像位于(100, 100)像素点的BGR值
-img[100, 100] = [0xFF, 0xFF, 0xFF] # 修改该像素点的值
+pixel_value = img[100, 100] 获取图像位于(100, 100)像素点的BGR值
+img[100, 100] = [0xFF, 0xFF, 0xFF] 修改该像素点的值
 ```
 
-#### 1.11 获取图像属性 ####
+#### 1.11 获取图像属性
 |属性|API|
 |---|---|
 |行数、列数和通道数|img.shape|
 |像素总个数|img.size|
 |数据类型|img.dtype|
 
-#### 1.12 通道的拆分与合并 ####
+#### 1.12 通道的拆分与合并
 拆分：
 
     cv2.split(m: MatLike) -> Sequence[MatLike]
@@ -119,7 +119,7 @@ img[100, 100] = [0xFF, 0xFF, 0xFF] # 修改该像素点的值
     cv2.merge(mv: Sequence[MatLike]) -> MatLike
 
 
-#### 1.13 改变色彩空间 ####
+#### 1.13 改变色彩空间
     cv2.cvtColor(src: MatLike, flag: int) -> MatLike
 参数：
 * flag：转换类型
@@ -127,7 +127,7 @@ img[100, 100] = [0xFF, 0xFF, 0xFF] # 修改该像素点的值
     * cv2.COLOR_BZGR2HSV
 
 ---
-#### example ####
+#### example
 ```py
 import cv2 as cv
 img = cv.imread("./image/OpenCV.png")
@@ -146,8 +146,8 @@ cv.waitKey()
 cv.destroyAllWindows()
 ```
 
-## 算术操作 ##
-#### 1.14 图像加法 ####
+## 算术操作
+#### 1.14 图像加法
     cv2.add(src1: MatLike, src2: MatLike) -> MatLike
 OpenCV的`add()`操作是**饱和**加法，即像素值最大可以加至`255`，忽略多余部分；而普通的`+`运算符操作会执行模运算
 ```py
@@ -163,7 +163,7 @@ OpenCV的`add()`操作是**饱和**加法，即像素值最大可以加至`255`�
 [ 44  24 220]
 ```
 
-#### 1.15 图像混合 ####
+#### 1.15 图像混合
     cv2.addWeighted(src1: MatLike, alpha: float, src2: MatLike, beta: float, gamma: float)
 参数：
 * 前四个参数分别是两张图像的对象和权重

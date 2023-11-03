@@ -1,6 +1,10 @@
-## cmake命令笔记 ##
+## cmake命令笔记
 ---
-## 配置 & 构建 ##
+## 配置 & 构建
+* vscode 的调试控制台输入如下命令可以查看内存
+```batch
+-exec x/<字节数>xb <地址>
+```
 ```batch
 cmake -B build
 cmake --build build
@@ -10,7 +14,7 @@ cmake --build build
 cmake -B build -DCMAKE_INSTALL_PREFIX=./build
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 ```
-## 基础 ##
+## 基础
 ```cmake
 cmake_minimum_required(<VERSION 版本号>)
 
@@ -28,7 +32,7 @@ endif()
 ```
 ---
 ## 常用命令
-#### configure_file() ####
+#### configure_file()
 ```cmake
 configure_file(<input> <output>)
 ```
@@ -40,13 +44,13 @@ configure_file(<input> <output>)
 #define PROJECT_VERSION_PATCH @PROJECT_VERSION_PATCH@
 ```
 
-#### message() ####
+#### message()
 ```cmake
 message([<mode>] "message text" ...)
 ```
 mode 参数主要有 `FATAL_ERROR` `SEND_ERROR` `WARNING` `AUTHOR_WARNING` `DEPRECATION` `STATUS` `VERBOSE` `DEBUG` `TRACE`，一般最常使用 `STATUS` 或 `NONE`
 
-#### option() ####
+#### option()
 ```cmake
 option(<variable> "<help_text>" [value])
 ```
@@ -73,13 +77,13 @@ target_include_directories(Tutorial PUBLIC "${PROJECT_BINARY_DIR}" ${EXTRA_INCLU
 #endif
 ```
 
-#### list() ####
+#### list()
 ```cmake
 list(<mode> <varName> <directories>)
 ```
 list 作用和 set 相似，大致意思是设置一个清单类型的变量供使用。mode 的常用主要参数有 `APPEND`
 
-#### target_compile_definitions() ####
+#### target_compile_definitions()
 ```cmake
 target_compile_definitions(<target>
     <INTERFACE|PUBLIC|PRIVATE> [items1...]
@@ -94,7 +98,7 @@ target_compile_definitions(main PUBLIC PI=3.14)
 std::cout << PI << std::endl;
 ```
 
-#### target_compile_features() ####
+#### target_compile_features()
 ```cmake
 target_compile_features(<target> <PRIVATE|PUBLIC|INTERFACE> <feature> [...])
 ```
@@ -108,7 +112,7 @@ target_compile_features(project_compiler_flags INTERFACE cxx_std_17)
 target_link_libraries(<target> PUBLIC project_compiler_flags)
 ```
 
-#### target_compile_options() ####
+#### target_compile_options()
 ```cmake
 target_compile_options(<target> [BEFORE]
     <INTERFACE|PUBLIC|PRIVATE> [items1...]
@@ -116,7 +120,7 @@ target_compile_options(<target> [BEFORE]
 ```
 [向目标添加编译选项](#生成器表达式)
 
-#### add_executable() ####
+#### add_executable()
 ```cmake
 add_executable(<tarhet> [WIN32] [MACOSX_BUNDLE]
     [EXCLUDE_FROM_ALL]
@@ -125,39 +129,39 @@ add_executable(<tarhet> [WIN32] [MACOSX_BUNDLE]
 ```
 该命令用于生成一个可执行程序，第一个参数为程序名且必需，后几个参数暂时不重要可省略，最后为生成所需的源码文件
 
-#### target_source() ####
+#### target_source()
 ```cmake
 target_source(<target> [PUBLIC|INTERFACE|PRIVATE] <source>)
 ```
 这个命令可以为生成 target 的命令补充依赖文件
 
-#### file() ####
+#### file()
 ```cmake
 file(GLOB <source> [CONFIGURE_DEPENDS] *.cpp *.h)
 target_source(<target> [PUBLIC|INTERFACE|PRIVATE] <${source}>)
 ```
 使用 GLOB 参数可以自动查找目录下指定扩展名的文件，实现批量添加。CONFIGURE_DEPENDS 为可选参数，目的在于实现有新文件变动时，自动更新变量
 
-#### aux_source_directory() ####
+#### aux_source_directory()
 ```cmake
 aux_source_directory(<directory> <source>)
 target_source(<target> [PUBLIC|INTERFACE|PRIVATE] <${source}>)
 ```
 它会根据生成 target 的语言类型，自动在目标 directory 下寻找对应类型的文件
 
-#### add_subdirectory() ####
+#### add_subdirectory()
 ```cmake
 add_subdirectory(<path>)
 ```
 告诉构建系统在子目录下继续寻找 `CMakeLists.txt`，产生一个新的变量作用域
 
-#### include() ####
+#### include()
 ```cmake
 include(<file> [OPTIONAL] [RESULT_VARIABLE myVar] [NO_POLICY_SCOPE])
 ```
 此命令将一个新的 cmake 内容引入到当前 cmake 内容中，通常为 .cmake 文件，且不会引入新的变量作用域
 
-#### add_library() ####
+#### add_library()
 ```cmake
 add_library(<target> [STATIC|SHARED|MODULE]
     [EXCLUDE_FROM_ALL]
@@ -180,7 +184,7 @@ set_property(TARGET <target> PROPERTY LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_
 set_property(TARGET <target> PROPERTY RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR})
 ```
 
-#### target_link_libraries() ####
+#### target_link_libraries()
 ```cmake
 target_link_libraries(<target>
     <PRIVATE|PUBLIC|INTERFACE> item1 [item2 ...]
@@ -190,7 +194,7 @@ target_link_libraries(<target>
 ```
 指定程序在编译阶段需要链接的库，`target` 可以是 `add_executable()` 和 `add_library()` 创建的文件，库既可以是自己生成的，也可以是外部导入的库
 
-#### target_include_directories() ####
+#### target_include_directories()
 ```cmake
 target_include_directories(<target> [SYSTEM] [AFTER|BEFORE]
     <INTERFACE|PUBLIC|PRIVATE> [items1...]
@@ -201,8 +205,8 @@ target_include_directories(<target> [SYSTEM] [AFTER|BEFORE]
 `INTERFACE` 任何链接到 target 的都需要 include `items`，而 target 本身并不需要，即消费者需要但生产者不需要
 
 ---
-## 变量 ##
-#### 普通变量 ####
+## 变量
+#### 普通变量
 ```cmake
 set(varName value... [PARENT_SCOPE])
 ```
@@ -220,14 +224,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_BUILD_TYPE Release)
 set(SOURCES ./main.cxx)
 ```
-#### 环境变量 ####
+#### 环境变量
 在当前项目中定义类似于操作系统环境变量的变量，定义与使用与普通变量基本一样，只是需要在前面加上 `ENV` 字符以及一对 `{}`，环境变量的作用域是全局的
 ```cmake
 set(ENV{PATH} "$/home/usr")
 message(STATUS "PATH=$ENV{PATH}")
 ```
 
-#### 缓存变量 ####
+#### 缓存变量
 与普通变量不同，缓存变量的值可以缓存到 `CMakeCache.txt` 文件中，当再次运行 cmake 时，可以从中获取上一次的值，而不是重新去评估。所以缓存变量的作用域是**全局**的
 和普通变量比起来，缓存变量携带了更多的信息。缓存变量有类型了，而且可以为缓存变量添加一个说明信息
 ```cmake
@@ -258,7 +262,7 @@ set(optVar initialValue CACHE BOOL helpString)
 不同之处在于`option()`命令没有 FORCE 关键字
 
 ---
-## 生成器表达式 ##
+## 生成器表达式
 使用生成器表达式需要 cmake 版本至少 3.15
 
     $<$<类型:值>:为真时的表达式>
@@ -276,7 +280,7 @@ target_compile_options(project_compiler_flags INTERFACE
 ```
 
 ---
-## 测试 ##
+## 测试
 ```cmake
 include(CTest) # 或 enable_testing()
 add_test(NAME <testName> COMMAND <project> [arg])
@@ -287,7 +291,7 @@ set_tests_properties(<testName> PROPERTIES PASS_REGULAR_EXPRESSION "result")
     ctest -C Debug -VV
 
 ---
-## 函数 ##
+## 函数
 根据上面 测试 部分，可以为其制作一个专用的测试函数
 ```cmake
 function(do_test target arg result)
@@ -302,7 +306,7 @@ do_test(<target> arg "result")
 ```
 
 ---
-## 安装 & 打包 ##
+## 安装 & 打包
 ```cmake
 install(TARGETS <target> DESTINATION <directory>)
 install(FILES <file> DESTINATION <directory>)

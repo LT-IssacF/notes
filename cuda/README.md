@@ -794,7 +794,6 @@ __global__ void MatrixMulCUDA(float *C, float *A, float *B, int wA, int wB) {
 }
 ```
 ![matrixMul](../image/matrixMul.png)
-我觉得目前对我来说比较新颖的点是，在 for 循环中声明共享内存，也就是每次迭代都会使用新的共享数组
 结合图片来理解这个 kernel，首先 `aBegin`(A 矩阵每一行块的开端) & `bBegin`(B 矩阵每一列块的开端) 是由 `blockIdx` 来决定的，这说明是 kernel 中的每一 block 来处理两个矩阵的每一行和列；然后再看这个循环，迭代每次的增量 `step` 是行或列里的块距（这里其实就已经说明了cuda硬件上的 block 和本矩阵的块不是一个东西），一个 block 一次迭代处理行（列）块中的一个块（方格），然后通过 wA(hB) / BLOCK_SIZE 次迭代就处理完了一行（列）块
 核心思想：通过迭代和在迭代内声明共享内存的方法让硬件上的 block 能够处理矩阵上的行（列）块
 第一个 `__syncthreads()` 后，共享矩阵中 `BLOCK_SIZE * BLOCK_SIZE` 个线程已经准备好了 `BLOCK_SIZE * BLOCK_SIZE` 的矩阵数据，对应于行（列）块中的一块

@@ -792,6 +792,9 @@ __global__ void MatrixMulCUDA(float *C, float *A, float *B, int wA, int wB) {
   int c = wB * BLOCK_SIZE * by + BLOCK_SIZE * bx;
   C[c + wB * ty + tx] = Csub;
 }
+dim3 threadsPerBlock(BLOCK_SIZE, BLOCK_SIZE);
+dim3 blocksPerGrid(wA / threadsPerBlock.x, wB / threadsPerBlock.y);
+MatrixMulCUDA<BLOCK_SIZE><<<threadsPerBlock, blocksPerGrid>>>(d_C, d_A, d_B, wA, wB);
 ```
 ![matrixMul](../image/matrixMul.png)
 结合图片来理解这个 kernel，首先 `aBegin`(A 矩阵每一行块的开端) & `bBegin`(B 矩阵每一列块的开端) 是由 `blockIdx` 来决定的，这说明是 kernel 中的每一 block 来处理两个矩阵的每一行和列；然后再看这个循环，迭代每次的增量 `step` 是行或列里的块距（这里其实就已经说明了cuda硬件上的 block 和本矩阵的块不是一个东西），一个 block 一次迭代处理行（列）块中的一个块（方格），然后通过 wA(hB) / BLOCK_SIZE 次迭代就处理完了一行（列）块

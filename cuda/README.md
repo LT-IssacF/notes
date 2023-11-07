@@ -538,9 +538,9 @@ void __global__ reduceNeighbor(const T *input, T *output) {
 ![](../image/reduceNeighbored.png)
 虽然无论在 naive 还是改进版中一开始都需要 8 个线程，但是改进后第一次只需要 4 个线程运行，余下的线程统一闲置，而不像 naive 中前一个线程在运行，后一个线程闲置
 
-* 交错配对 reduce 模板(naive)
+* 交错配对 reduce 模板
 ```C++
-void __global reduceLeavedNaive(const T *input, T *output) {
+void __global reduceInterleavedNaive(const T *input, T *output) {
     ...
     for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
         if (threadIdx.x < stride) {
@@ -698,7 +698,7 @@ for(int i=0;i<n_stream;i++) {
     kernel_4<<<grid,block,0,stream[i]>>>();
 }
 ```
-如上，理想情况下设备会并发启动16个流顺序执行4个 kernel，但在较老架构如 Fermi 上则不尽然，因为它只有1个工作队列。Kepler 支持的最大队列为32个，但在默认情况下被限制为8个，即一次启动8个流，分2次启动执行完，使用 setenv 可以修改这个限制。当然最终觉得设备能并发流数量的还是流内 kernel 对硬件资源的占用情况
+如上，**理想情况下设备会并发启动16个流**顺序执行4个 kernel，但在较老架构如 Fermi 上则不尽然，因为它只有1个工作队列。Kepler 支持的最大队列为32个，但在默认情况下被限制为8个，即一次启动8个流，分2次启动执行完，使用 setenv 可以修改这个限制。当然最终觉得设备能并发流数量的还是流内 kernel 对硬件资源的占用情况
 ```C++
 setenv("CUDA_DEVICE_MAX_CONNECTIONS", "32", 1);
 ```
@@ -808,4 +808,37 @@ MatrixMulCUDA<BLOCK_SIZE><<<threadsPerBlock, blocksPerGrid>>>(d_C, d_A, d_B, wA,
 这个 [example](https://github.com/NVIDIA/cuda-samples/blob/master/Samples/0_Introduction/matrixMulDrv/matrixMulDrv.cpp) 呢就是又提供了一种其它工程使用CUDA的方式，就是先将 .cu 用编译器编译成 .fatbin 文件，之后在主工程内依靠 `#include <builtin_types.h`, `#include <helper_cuda_drvapi.h>` & `#include <cuda.h>` 使用，具体命令：
 ```bash
 $ nvcc -I<CUDA_INCLUDES> -gencode arch=compute_<CUDA_ARCHITECTURE>,code=sm_<CUDA_ARCHITECTURE> -o <target>.fatbin -fatbin <source>
+```
+
+### simpleHyperQ
+如果有 kernel 需要迭代处理，那么可以利用硬件的 Hyper-Q 技术实现并发
+```C++
+for (int i = 0; i < nstreams; ++i) {
+  kernel_A<<<1, 1, 0, streams[i]>>>(&d_a[2 * i], time_clocks);
+  total_clocks += time_clocks;
+  kernel_B<<<1, 1, 0, streams[i]>>>(&d_a[2 * i + 1], time_clocks);
+  total_clocks += time_clocks;
+}
+```
+上面这个迭代会在硬件条件允许的范围内并发执行 `nstreams` 个流，每个流内的 kernel 严格按照顺序执行
+
+### simpleCooperativeGroups
+这个 example 展示了 cooperative_groups 的基本用法。cuda 虽然在块内提供了像 `__syncthread()` 这样的同步操作，但它是对板块内所有线程操作的，在一些实现更高性能的场合，这样显然是不够用的
+
+首先按下面的方式可以获得 kernel 内线程块的句柄
+```C++
+cooperative_groups::thread_block group = cooperative_groups::this_thread_block();
+```
+与其它 cuda 程序一样，cooperative_groups 也有获取本线程信息的接口
+```C++
+int groupSize = group.size(); // blockDim
+int index = group.thread_rank(); // threadIdx
+group.sync(); // __syncthreads()
+```
+下面这个例子就实现了在一个板块内再划分数个16个线程一组的 tile，再分 tile 去处理
+```C++
+cooperative_groups::thread_block_tile<16> tiledPartition16 = cooperative_groups::tiled_partition<16>(group);
+int sharedOffset = group.thread_rank() - tiledPartition16.thread_rank(); // extern __shared__ int shared[];
+index = tiledPartition16.thread_rank(); // threadIdx in current tile
+int res = func(tilePartition16, shared + sharedOffset, index); // __device__ int func(cooperative_groups::thread_group, int*, int);
 ```

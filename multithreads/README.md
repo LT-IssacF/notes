@@ -1,4 +1,4 @@
-## 课程来源: [C++11开始的多线程编程](https://www.bilibili.com/video/BV1Ya411q7y4/ "双笙子佯谬")
+## [C++11开始的多线程编程](https://www.bilibili.com/video/BV1Ya411q7y4/ "双笙子佯谬")
 ## 0. std::chrono(C++11)
 * 时间点: 2023年9月7日 `chrono::steady_clock::time_point` 等
 * 时间段: 10秒 `chrono::milliseconds, chrono::seconds, chrono::minutes` 等
@@ -17,7 +17,7 @@ double ms = std::chrono::duration_cast<double_ms>(dt).count();
 ```
 
 ---
-## 1. 进程
+## 1. 线程
 #### std::thread(C++11)
 使用需在 CMakeLists.txt 添加：
 ```cmake
@@ -35,6 +35,8 @@ auto t = std::chrono::steady_clock::now() + std::chrono::milliseconds(400);
 std::this_thread::sleep_until(t);
 // 让进程睡到某个时间点
 ```
+* std::thread::hardware_concurrency
+> 用来获取当前系统中可以同时运行多少个线程
 
 ---
 传统的C++程序只是一个 main 函数的单线程，必须从头至尾挨个执行，效率低
@@ -44,6 +46,11 @@ std::thread t1([&] {
     download("hello.zip");
 });
 ```
+* 普通构造
+```C++
+std::thread t1{download, std::string("hello.zip")};
+```
+
 * 主线程等待子线程结束：`t1.join()`
 
 在 return 之前添加可以让主线程等到 t1 结束再继续进行
@@ -85,8 +92,8 @@ jthread的析构函数会自动调用 `join()`，如果 `joinable()` 的话
 ## 2. 异步
 `std::future` 代表一个异步操作的结果，它可以从一个异步任务中获取返回值
 #### std::async
-   include <future>
-* `std::async` 是一个用于异步执行函数的模板，接受一个带返回值的 lambda，自身返回一个 `std::future` 对象，并创建一个线程
+    include <future>
+* `std::async` 是一个用于异步执行函数的模板，将程序的执行推到后台，接受一个带返回值的 lambda，自身返回一个 `std::future` 对象，并创建一个线程
 ```C++
 int download(std::string file) {
     for (int i = 0; i < 10; i++) {
@@ -114,7 +121,7 @@ int main() {
     return 0;
 }
 ```
-* `get()` 会隐式地等待线程执行完毕，返回之前 `std::async` 构造时 lambda 的返回值
+* `get()` 会隐式地等待线程执行完毕即阻塞调用者线程，返回之前 `std::async` 构造时 lambda 的返回值
 * `wait()` 可以显示地等待，只要线程没有执行完，会一直 wait 下去
 * `wait_for()` 等待一段时间，返回一个 `std::future_status`
 ```C++
@@ -131,9 +138,9 @@ if(stat == std::future_status::ready) { // 若在时间内执行完，则返回f
 ---
 #### 将任务与 future 关联：std::packaged_task
 `std::packaged_task` 是一个可调用目标，它包装了一个任务，可以捕获其返回值，并将其储存到 `std::future` 对象中。一般的使用 `std::packaged_task` 步骤：
-####### 1. 创建一个 `std::packaged_task` 对象，该对象包装了要执行的任务
-####### 2. 调用 `std::packaged_task` 对象的 `get_future()` 函数，返回一个与任务关联的 `std::future` 对象
-####### 3. 在需要任务结果的地方，调用与任务关联的 `std::future` 对象的 `get()` ，以获取任务的返回值
+###### 1. 创建一个 `std::packaged_task` 对象，该对象包装了要执行的任务
+###### 2. 调用 `std::packaged_task` 对象的 `get_future()` 函数，返回一个与任务关联的 `std::future` 对象
+###### 3. 在需要任务结果的地方，调用与任务关联的 `std::future` 对象的 `get()` ，以获取任务的返回值
 
 ---
 #### 手动创建线程：std::promise
@@ -460,7 +467,7 @@ std::thread t2([&] {
 
 判断 `counter` 与 `old` 是否相等，若不相等则将 `counter` 写入 `old` ，否则将 `val` 写入 `counter`
 
-## 课程来源: [TBB开启的并行编程之旅](https://www.bilibili.com/video/BV1Ya411q7y4/ "双笙子佯谬")
+## [TBB开启的并行编程之旅](https://www.bilibili.com/video/BV1Ya411q7y4/ "双笙子佯谬")
 ```cmake
 # CMakeLists.txt
 find_package(TBB REQUIRED)

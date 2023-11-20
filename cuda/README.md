@@ -1,4 +1,4 @@
-# 课程来源: [CUDA在现代C++中如何运用？](https://www.bilibili.com/video/BV16b4y1E74f/ "双笙子佯谬")(仅适合入门，正儿八经学老老实实看文档逛博客)
+# [CUDA在现代C++中如何运用？](https://www.bilibili.com/video/BV16b4y1E74f/ "双笙子佯谬")(仅适合入门，正儿八经学老老实实看文档逛博客)
 
 ## 前置知识
 * `__global__` 核函数，从CPU端通过三重尖括号调用，在GPU端上执行，不可以有返回值
@@ -476,6 +476,13 @@ cudaEventDestroy(end)
 ```
 这本书由于内容过于远古，甚至第七章 texture 纹理内存的声明使用现今都不再支持，遂放弃阅读
 
+# [ZOMI的课程](https://space.bilibili.com/517221395)
+## GPU原理
+### 架构——以 A100 为例
+A100 拥有 **80GB** 的**显存**，**40MB** 的**二级缓存**，每个 SM 则有 **192KB** 的**一级缓存**和 **256KB** 的**寄存器**，从而拥有 **108** 个 SM 的 A100 总共有 20MB 和 27MB 的一缓和寄存器
+以显存为基准，L2缓存、L1缓存和主存的带宽分别是显存的 **3倍**、**13倍** 和 **0.02倍**
+而以L1缓存为基准，L2缓存、显存和主存的时延分别是L1缓存的 **5倍**、**15倍** 和 **25倍**
+
 # [cuda-samples](https://github.com/NVIDIA/cuda-samples)(强烈推荐[谭升的博客](https://face2ai.com/))
 ## 0_Introduction
 ### asyncAPI
@@ -500,14 +507,14 @@ while (cudaEventQuery(end) == cudaErrorNotReady) {
 ```
 
 ### clock
-* 相邻配对 reduce 模板
+* 相邻配对 reduce
 ```C++
 void __global__ reduceNeighboredNaive(const T *input, T *output, float *timer) {
     extern __shared__ T shared[]; // shared[blockDim.x]
 
     if (threadIdx.x == 0) timer[blockIdx.x] = clock(); // additional record time of each block
 
-    shared[threadIdx.x] = input[threadIdx.x], shared[threadIdx.x + blockDim.x] = input[threadIdx.x + blockDim.x]; // preprocess shared
+    shared[threadIdx.x] = input[threadIdx.x]; // preprocess shared
 
     for (int stride = 1; stride < blockDim.x; stride <<= 1) {
         if (threadIdx.x % (stride * 2) == 0) { // this judge sentence cause half block of threads will be idle
@@ -521,7 +528,7 @@ void __global__ reduceNeighboredNaive(const T *input, T *output, float *timer) {
     }
 }
 ```
-`if (threadIdx.x % (stride * 2))` 会导致每前后一对线程只有一个满足条件执行控制块内语句，这样就导致每次以 stride 迭代处理 shared 都会只有一半地线程被闲置，这是非常低效的
+`if (threadIdx.x % (stride * 2))` 会导致每前后一对线程只有一个满足条件执行控制块内语句，这样就导致了**线程束分支分化**
 * 改进：
 ```C++
 void __global__ reduceNeighbor(const T *input, T *output) {
@@ -536,9 +543,16 @@ void __global__ reduceNeighbor(const T *input, T *output) {
 }
 ```
 ![](../image/reduceNeighbored.png)
-虽然无论在 naive 还是改进版中一开始都需要 8 个线程，但是改进后第一次只需要 4 个线程运行，余下的线程统一闲置，而不像 naive 中前一个线程在运行，后一个线程闲置
+虽然无论在 naive 还是改进版中一开始都需要 8 个线程，但是改进后第一次只需要 4 个线程运行，余下的线程统一闲置，而不像 naive 中前一个线程在运行，后一个线程闲置  
 
-* 交错配对 reduce 模板
+但是，这样就会造成另一个常见的问题——bank conflict  
+如下图所说，shared memory 为了匹配 warp，bank 也被设计成以 **32** 为大小的存储体
+![https://www.bilibili.com/video/BV1Xz4y157p7](../image/bank.png)
+但是如果当多个线程都在访问同一个 bank，比如以列优先访问矩阵时，就会造成 bank conflict
+![](../image/bank_conflict.png)
+在这个 reduce 中，第一次迭代时线程 0 会加载 0 号和 1 号数据，而线程 16 会加载 32 号和 33 号数据，两个线程都在一个 warp 中，但是它们的共享数据都被映射到了 bank0 和 bank1，此时就造成了 bank conflict
+
+* 改进：交错配对 reduce
 ```C++
 void __global reduceInterleavedNaive(const T *input, T *output) {
     ...
@@ -550,10 +564,8 @@ void __global reduceInterleavedNaive(const T *input, T *output) {
     ...
 }
 ```
-交错配对方式的 naive 情况下与上面相邻配对改进后的效果差不多，原因也类似
-
 GPU 十分适合执行展开的循环操作，一个循环在CPU上的语言编译器可以很容易的被展开，但是CUDA的编译器并不能做到这点，所以展开操作需要人为编写
-* 展开的归约
+* 解决 idle 线程
 ```C++
 void __global__ reduceUnroll(const T *input, T *output, int n) {
     extern __shared__ T shared[];
@@ -576,9 +588,10 @@ void __global__ reduceUnroll(const T *input, T *output, int n) {
     }
 }
 ```
-上面这种优化方法是将两个块的数据提前整合到一个块内，理论上可以提高一般性能，还可以继续整合四个块、八个块等更大的
+上面这种优化方法是将两个块的数据提前整合到一个块内，理论上可以提高一倍性能，还可以继续整合四个块、八个块等更大的
 
-* 完全展开的归约
+* 展开的归约  
+
 线程是按 warp 即32个为一组运行的，当上面的 stride 为32或更小时，就会出现一些启动的线程被搁置
 ```C++
 void __global__ reduceUnrollCompleted(const T *input, T *output, int n) {
@@ -595,7 +608,7 @@ void __global__ reduceUnrollCompleted(const T *input, T *output, int n) {
         shared[threadIdx.x] += shared[threadIdx.x + 1];
     }
 }
-/*
+/**
  *     threadIdx = 0            threadIdx = 16          threadIdx = 8
  * shared[0] += shared[32] shared[16] += shared[48] shared[8] += shared[40]
  * shared[0] += shared[16] shared[16] += shared[32] shared[8] += shared[24]
@@ -603,7 +616,7 @@ void __global__ reduceUnrollCompleted(const T *input, T *output, int n) {
  * shared[0] += shared[4]  shared[16] += shared[20] shared[8] += shared[12]
  * shared[0] += shared[2]  shared[16] += shared[18] shared[8] += shared[10]
  * shared[0] += shared[1]  shared[16] += shared[17] shared[8] += shared[9]
- * */
+ */
 ```
 如上，理论上第16号线程不应当整合第32个位置的数据，但是，0号线程需要的只是整合过第48个位置数据的第16个数据，而且这32个线程的每一步都是同时进行的，所以在第16号线程将自己的数据变得无用之前，第0号线程就已经将它之前有用的数据读取，之后16号线程再怎么混乱都无所谓；同理第0号线程需要累加过第40号和第24号数据的第8号数据，并在第8号数据乱加之前就已将其正确的累加数据取出，关于这点可以结合之前小彭视频中的 `if (threadIdx.x < 32)` `if (threadIdx.x < 16)` `if (threadIdx.x < 8)` ...
 
@@ -652,6 +665,7 @@ kernel<<<dim3 gridDim, dim3 blockDim, size_t sharedMemSize = 0, cudaStream_t str
 之前使用的启动配置并没有显式地提供流的参数，cuda 会默认使用空流，其余涉及到流的函数也一样。空流是同步流，有些操作会阻塞主机操作。使用经过显式创建的流默认是异步阻塞流（也可以特别声明为非阻塞流），通常不会阻塞主机
 
 * 数据传输的异步版本
+
 一般的数据传输过程为：锁页-传输到内存上固定区域-传输到设备，使用 `cudaMallocHost` 可以直接在内存上分配到固定区域内存，提高传输效率
 ```C++
 cudaError_t cudaMallocHost(void **ptr, size_t size); // 执行异步传输数据时，主机端的内存不能分页
@@ -682,6 +696,7 @@ cudaError_t cudaDeviceGetStreamPriorityRange(int *leastPriority, int *greatestPr
 不同的设备有不同的优先级，leastPriority 表示最低优先级（远离0），greatestPriority 表示最高优先级（接近0）
 
 * 事件 event
+
 event 的作用主要包括同步流和监控设备的进展，就像之前计算 elapsedTime 一样
 ```C++
 cudaError_t cudaEventCreateWithFlags(cudaEvent_t* event, unsigned int flags);
@@ -704,7 +719,8 @@ setenv("CUDA_DEVICE_MAX_CONNECTIONS", "32", 1);
 ```
 
 * 利用 event 创建流间依赖关系
-如上所说，无论空流还是非空流，未特殊定义地话都是阻塞流，
+
+如上所说，无论空流还是非空流，未特殊定义的话都是阻塞流，
 ```C++
 int nkernels = 8, nstreams = nkernels + 1;
 for (int i = 0; i < nkernels; i++) {
@@ -805,7 +821,7 @@ MatrixMulCUDA<BLOCK_SIZE><<<threadsPerBlock, blocksPerGrid>>>(d_C, d_A, d_B, wA,
 而 `C[]` 的保存位置是 `c`(块偏移) 和 block 内偏移（一个 block 内有 `BLOCK_SIZE * BLOCK_SIZE` 个 `Csub`）决定的，不再多讲。需要注意的是，在计算 `bStep` 和 最后的块内偏移是，乘的是 `wB` 而不是 `BLOCK_SIZE`
 
 ### matrixMulDrv
-这个 [example](https://github.com/NVIDIA/cuda-samples/blob/master/Samples/0_Introduction/matrixMulDrv/matrixMulDrv.cpp) 呢就是又提供了一种其它工程使用CUDA的方式，就是先将 .cu 用编译器编译成 .fatbin 文件，之后在主工程内依靠 `#include <builtin_types.h`, `#include <helper_cuda_drvapi.h>` & `#include <cuda.h>` 使用，具体命令：
+这个 [example](https://github.com/NVIDIA/cuda-samples/blob/master/Samples/0_Introduction/matrixMulDrv/matrixMulDrv.cpp) 呢就是又提供了一种其它工程使用CUDA的方式，就是先将 .cu 用编译器编译成 .fatbin 文件，之后在主工程内依靠 `#include <builtin_types.h>`, `#include <helper_cuda_drvapi.h>` & `#include <cuda.h>` 使用，具体命令：
 ```bash
 $ nvcc -I<CUDA_INCLUDES> -gencode arch=compute_<CUDA_ARCHITECTURE>,code=sm_<CUDA_ARCHITECTURE> -o <target>.fatbin -fatbin <source>
 ```
